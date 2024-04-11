@@ -1,0 +1,60 @@
+--this entire sql query takes the string in the form of "d/m/yyyy h/mm/ss AM/PM" and converts it into two seperate columns: date and time
+--time column has format "hh/mm/ss" and is data format TIME
+--date column has format "dd/mm/yy" and is data format DATE
+
+
+--First CTE just imports the columns and adds a new one for time, still in string type but without date or AM/PM. This makes locating values within the time easier
+
+WITH 
+time_format_1 AS (
+SELECT 
+  id,
+  time AS time_original,
+  cast(
+  Concat(
+  Right(SPLIT(Time, " ")[OFFSET(0)], 4),
+  "-", SPLIT(time, "/")[OFFSET(0)], "-", SPLIT(time, "/")[OFFSET(1)]) 
+  AS Date) AS date,
+  SPLIT(Time, " ") [OFFSET(1)] AS time,
+  value
+FROM `bellabeat-capstone-419215.Fitness_Data.Heartrate` 
+)
+
+
+-- second cte accounts for the fact that the original dataset used am/pm instead of military time, so if the time is in pm and isn't 12 it replaces
+-- (cont'd) hour with h+12 hours. There are some lpad functions to allow this to work consistently since single digit hours can't as easily be seperated by LEFT  
+,heart_rate AS (
+SELECT 
+  Id, 
+    CASE
+    WHEN RIGHT(time_original, 2) = "PM" AND Left(time, 2) <> "12"
+    THEN 
+      CAST(
+          REPLACE(
+    time
+    ,LEFT(
+      LPAD(
+        time, 8, "0")
+      , 2)
+    ,CAST((CAST(
+      LEFT(
+      LPAD(
+        time, 8, "0")
+      , 2) AS INT64
+    ) + 12) AS STRING)
+    ) AS TIME)
+      ELSE
+      
+      CAST(
+      time AS TIME)
+      END AS time,
+  Value,
+  date
+
+ FROM time_format_1
+)
+
+
+SELECT *
+
+FROM heart_rate
